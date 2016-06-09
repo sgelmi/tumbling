@@ -1,0 +1,59 @@
+Option Explicit
+'Module 2
+'this module holds all function of WordMacros document
+
+Function InsertFormField()
+
+Dim i As Integer
+Dim Nombre As String
+Dim fField As FormField
+Dim SearchTerm As String
+'Dim SearchTermResult As String
+Dim Result As String
+Dim Result2 As String
+
+Dim var As Integer
+
+SearchTerm = "GA_*_?{4}*$END"
+'SearchTermResult = SearchTermName & "*$END"
+
+'Go to top of document.
+Selection.HomeKey Unit:=wdStory
+
+'Initialize Find.
+Selection.Find.ClearFormatting
+
+With Selection.Find
+    .Forward = True
+    .Wrap = wdFindContinue
+    .Format = False
+    .MatchCase = False
+    .MatchWholeWord = False
+    .MatchWildcards = True 'edited from false sg
+    .MatchSoundsLike = False
+    .MatchAllWordForms = False
+    
+    ' Execute the find.
+    Do While .Execute(FindText:=SearchTerm) = True
+        Nombre = Selection.Text
+        Result = Selection.Text
+        var = InStr(1, Result, "$")
+        Nombre = Left(Result, var - 1)
+        Result = Mid(Result, var + 1, InStr(var + 1, Result, "$END") - var - 1)
+        'MsgBox Nombre & Chr(13) & Result
+        
+        ' Replace the placeholder with the form field.
+        Set fField = Selection.FormFields.Add(Range:=Selection.Range, Type:=wdFieldFormTextInput)
+        
+        ' Restore form field contents and bookmark name.
+        fField.Result = Result
+        fField.Name = Nombre
+    Loop
+    
+    'Go to top of document for next find.
+    Selection.HomeKey Unit:=wdStory
+    
+
+End With
+
+End Function
