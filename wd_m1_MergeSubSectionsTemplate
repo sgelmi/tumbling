@@ -1,0 +1,159 @@
+Option Explicit
+
+Sub MergeSubSectionsTemplate()
+'import to module 1
+
+Application.ScreenUpdating = False
+
+Dim wDoc As Document
+Dim mergeDoc As Document
+Dim NumRecords As Integer
+Dim i As Integer
+Dim SaveAsName As String
+Dim KName As String
+Dim KDOB As String
+Dim Loc As String
+Dim LocParent As String
+Dim DocName As String
+Dim DBfile As String
+Dim contrasena As String
+Dim FldrPicker As FileDialog
+Dim LocGAfiles As String
+Dim myExtension As String
+Dim GAfile As String
+Dim dlgOpen As FileDialog
+Dim SubSecEmptyName As String
+Dim idName As String
+Dim blah As Integer
+
+On Error GoTo EarlyExit:
+Word.Application.Visible = False
+
+idName = "Child_ID"
+contrasena = "arianna"
+SubSecEmptyName = "2.SubSections_Empty"
+
+'CONNECT TO NEW DB
+'prompt for DB file.
+Set dlgOpen = Application.FileDialog(FileDialogType:=msoFileDialogOpen)
+With dlgOpen
+    .Title = "Select database"
+    .AllowMultiSelect = False
+    .Show
+    On Error GoTo EarlyExit:
+    DBfile = .SelectedItems(1)
+    On Error GoTo 0
+End With
+Set dlgOpen = Nothing
+
+LocParent = Left(DBfile, InStrRev(DBfile, "\"))
+
+'START TO LOOP THROUGH GA FILES
+'Retrieve Target Folder Path From User
+Set FldrPicker = Application.FileDialog(msoFileDialogFolderPicker)
+With FldrPicker
+    .Title = "Select folder where template subsection files are located"
+    .AllowMultiSelect = False
+    If .Show <> -1 Then GoTo NextCode
+    LocGAfiles = .SelectedItems(1) & "\"
+End With
+Set FldrPicker = Nothing
+
+'In Case of Cancel
+NextCode:
+    LocGAfiles = LocGAfiles
+    If LocGAfiles = "" Then GoTo EarlyExit:
+
+'Target File Extension (must include wildcard "*")
+myExtension = "*.docx"
+
+'Target Path with Ending Extention
+GAfile = Dir(LocGAfiles & myExtension)
+
+'Loop through each Excel file in folder
+Do While GAfile <> ""
+    'Set variable equal to GA document
+    Set wDoc = Documents.Open(FileName:=LocGAfiles & GAfile, AddToRecentFiles:=False, Visible:=False)
+    
+    DocName = Left(wDoc.Name, InStr(wDoc.Name, ".") - 1)
+    
+    'assing New DB to wd document
+    With wDoc.MailMerge
+        .MainDocumentType = wdCatalog
+        .OpenDataSource Name:=DBfile, ReadOnly:=True, SQLStatement:="SELECT * FROM [Data$]" 'Connection:="Data$"
+        .ViewMailMergeFieldCodes = False 'display preview
+    End With
+    
+    'get number of records
+    NumRecords = wDoc.MailMerge.DataSource.RecordCount
+    'MsgBox NumRecords
+    
+    'Create files for each record
+    For i = 1 To NumRecords
+        With wDoc.MailMerge
+            With .DataSource
+                .ActiveRecord = i
+                SaveAsName = .DataFields(idName).Value & "_" & DocName
+                KName = .DataFields(idName)
+                'KDOB = .DataFields("DOB")
+                .FirstRecord = i
+                .LastRecord = i
+             End With
+             .Destination = wdSendToNewDocument
+             .Execute
+        End With
+        'MsgBox ActiveDocument.Name
+        Set mergeDoc = ActiveDocument
+        
+        'insert form fields
+        InsertFormField
+        
+        'proctect form
+        If mergeDoc.ProtectionType = wdNoProtection Then
+            mergeDoc.Protect Type:=wdAllowOnlyFormFields, NoReset:=True, Password:=contrasena
+        End If
+        
+        'Add custom property values
+        With mergeDoc.CustomDocumentProperties
+            .Add Name:="KName", _
+            LinkToContent:=False, _
+            Type:=msoPropertyTypeString, _
+            Value:=KName
+        End With
+        
+        
+        'Save and close
+        Loc = LocParent & SubSecEmptyName
+        'create outputfolder
+        On Error Resume Next
+        MkDir Loc
+        On Error GoTo 0
+        mergeDoc.SaveAs FileName:=Loc & "\" & SaveAsName
+        mergeDoc.Close
+        Set mergeDoc = Nothing
+    
+    Next i
+    
+      'Get next file name
+      GAfile = Dir()
+      wDoc.Close savechanges:=False
+    
+Loop
+  
+'Message Box when tasks are completed
+MsgBox "Task Complete! " & Chr(13) & "Check: " & Loc
+
+'NEXT GA FILE LOOP UP
+
+
+
+
+EarlyExit:
+Word.Application.Visible = True
+On Error Resume Next
+'wDoc.Close savechanges:=False
+Set wDoc = Nothing
+Application.ScreenUpdating = True
+On Error GoTo 0
+
+End Sub
