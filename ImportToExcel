@@ -1,0 +1,121 @@
+Sub ImportToExcel()
+
+'this macro runs on windows, not sure it would run in OSx
+' to be imported under Module1
+
+Dim wb As Workbook
+Dim ws As Worksheet
+Dim wdApp As Word.Application
+Dim wdDoc As Word.Document
+Dim myPath As String
+Dim myFile As String
+Dim myExtension As String
+Dim FldrPicker As FileDialog
+Dim dFormField As FormField
+Dim KName As String
+'Dim KDOB As String
+Dim VarName As String
+Dim VarValue As String
+Dim headerRng As Range
+Dim idRng As Range
+Dim Row As Long
+Dim Col As Long
+Dim idCol As Long
+
+idCol = 1 'where the record matching id is located.
+
+Set wdApp = CreateObject("Word.Application")
+
+
+'Optimize Macro Speed
+Application.ScreenUpdating = False
+Application.EnableEvents = False
+Application.Calculation = xlCalculationManual
+
+Set wb = ActiveWorkbook
+Set ws = wb.Worksheets("Data")
+'find final row on column idCol and final column on row 1
+With ws
+    Col = .Cells(1, Columns.Count).End(xlToLeft).Column
+    Row = .Cells(Rows.Count, idCol).End(xlUp).Row
+    
+    'set header and id range with last col and row
+    
+    Set headerRng = .Range(.Cells(1, 1), .Cells(1, Col))
+    Set idRng = .Range(.Cells(1, idCol), .Cells(Row, idCol))
+End With
+
+'Retrieve Target Folder Path From User
+Set FldrPicker = Application.FileDialog(msoFileDialogFolderPicker)
+
+With FldrPicker
+    .Title = "Select folder where completed ga files are located"
+    .AllowMultiSelect = False
+     If .Show <> -1 Then GoTo NextCode
+     myPath = .SelectedItems(1) & "\"
+End With
+
+'In Case of Cancel
+NextCode:
+  myPath = myPath
+  If myPath = "" Then GoTo ResetSettings
+
+'Target File Extension (must include wildcard "*")
+myExtension = "*.docx"
+
+'Target Path with Ending Extention
+myFile = Dir(myPath & myExtension)
+MsgBox myPath
+MsgBox myFile
+
+'Loop through each Excel file in folder
+ Do While myFile <> ""
+   'Set variable equal to opened workbook
+   Set wdDoc = Word.Documents.Open(Filename:=myPath & myFile, AddToRecentFiles:=False, Visible:=False)
+     
+  'MsgBox wdDoc
+  With wdDoc
+    KName = .CustomDocumentProperties("KName")
+    'KDOB = .CustomDocumentProperties("KDOB")
+    For Each dFormField In .FormFields()
+        On Error GoTo NoRecordFoundErr:
+        Row = Application.WorksheetFunction.Match(KName, idRng, 0)
+        On Error GoTo 0
+        VarName = dFormField.Name
+        VarValue = dFormField.Result
+        Col = Application.WorksheetFunction.Match(VarName, headerRng, 0)
+        'MsgBox (KName & Chr(13) & KDOB & Chr(13) & VarName & Chr(13) & VarValue)
+        'store data into table
+        ws.Cells(Row, Col).Value = VarValue
+    Next
+    End With
+    
+   'Get next file name
+skippingrecord:
+      myFile = Dir
+  Loop
+
+
+
+ResetSettings:
+  'Reset Macro Optimization Settings
+    Application.EnableEvents = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    Set wdDoc = Nothing
+    Set wdApp = Nothing
+    
+'Message Box when tasks are completed
+MsgBox "Task Complete! Thanks for your patience"
+ 
+Exit Sub
+NoRecordFoundErr:
+    respuesta = MsgBox("The following record " & KName & " from " & myFile & " was not found. The script will skip it and continue.", vbOKCancel, "Record not found: Skipping record")
+    If respuesta = 2 Then
+        MsgBox "Script cancelled by user, sorry. Progress was not lost."
+        Exit Sub
+    End If
+    Resume skippingrecord:
+    
+End Sub
+
