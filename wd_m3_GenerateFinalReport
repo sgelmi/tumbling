@@ -1,0 +1,134 @@
+Option Explicit
+
+Sub GenerateFinalReports()
+
+Application.ScreenUpdating = False
+
+Dim wDoc As Document
+Dim mergeDoc As Document
+Dim NumRecords As Integer
+Dim i As Integer
+Dim SaveAsName As String
+Dim PrefName As String
+Dim KPrefName As String
+Dim Loc As String
+Dim LocParent As String
+Dim DocName As String
+Dim DBfile As String
+Dim FRfile As String
+Dim dlgOpen As FileDialog
+'Dim contrasena As String
+Dim FldrPicker As FileDialog
+Dim LocGAfiles As String
+'Dim myExtension As String
+Dim GAfile As String
+Dim OutputFolder As String
+Dim id As String
+Dim xName As String
+
+'On Error GoTo EarlyExit:
+'Word.Application.Visible = False
+
+id = "Child_ID"
+PrefName = "Preferred_Name"
+OutputFolder = "4.Final_Reports"
+xName = "XName"
+
+'CONNECT TO NEW DB
+'prompt for DB file.
+Set dlgOpen = Application.FileDialog(FileDialogType:=msoFileDialogOpen)
+With dlgOpen
+    .Title = "Select database"
+    .AllowMultiSelect = False
+    .Show
+    On Error GoTo EarlyExit:
+    DBfile = .SelectedItems(1)
+    On Error GoTo 0
+End With
+
+Set dlgOpen = Nothing 'close dlgOpen object
+
+LocParent = Left(DBfile, InStrRev(DBfile, "\"))
+
+'SELECT FINAL REPORT TEMPLATE
+Set dlgOpen = Application.FileDialog(FileDialogType:=msoFileDialogOpen)
+With dlgOpen
+    .Title = "Select Final Report template"
+    .AllowMultiSelect = False
+    .Show
+    On Error GoTo EarlyExit:
+    FRfile = .SelectedItems(1)
+    On Error GoTo 0
+End With
+
+Set dlgOpen = Nothing 'close dlgOpen object
+
+'open final report template selected by user
+Set wDoc = Documents.Open(FileName:=FRfile, AddToRecentFiles:=False, Visible:=False)
+
+'assing New DB to wd document
+With wDoc.MailMerge
+    .MainDocumentType = wdCatalog
+    .OpenDataSource Name:=DBfile, ReadOnly:=True, SQLStatement:="SELECT * FROM [Data$]" 'Connection:="Data$"
+    .ViewMailMergeFieldCodes = False 'display preview
+End With
+
+'get number of records
+NumRecords = wDoc.MailMerge.DataSource.RecordCount
+MsgBox NumRecords
+
+'Create report for each record
+For i = 1 To NumRecords
+    With wDoc.MailMerge
+        With .DataSource
+            .ActiveRecord = i
+            SaveAsName = .DataFields(id).Value & "_Draft"
+            KPrefName = .DataFields(PrefName)
+            .FirstRecord = i
+            .LastRecord = i
+        End With
+        .Destination = wdSendToNewDocument
+        .Execute
+    End With
+    
+    'MsgBox ActiveDocument.Name
+    Set mergeDoc = ActiveDocument
+    
+    'REPLACE KIDS NAME
+    With Selection.Find
+        .ClearFormatting
+        .Text = xName
+        .Replacement.ClearFormatting
+        .Replacement.Text = KPrefName
+        .Execute Replace:=wdReplaceAll, Forward:=True, _
+        Wrap:=wdFindContinue
+    End With
+    
+    'Save and close
+    Loc = LocParent & OutputFolder
+    'create outputfolder
+    On Error Resume Next
+    MkDir Loc
+    On Error GoTo 0
+    mergeDoc.SaveAs FileName:=Loc & "\" & SaveAsName
+    mergeDoc.Close
+    Set mergeDoc = Nothing
+    
+Next i
+
+wDoc.Close savechanges:=False
+
+'Message Box when tasks are completed
+MsgBox "Task Complete! " & Chr(13) & "Check: " & Loc
+
+'NEXT GA FILE LOOP UP
+
+EarlyExit:
+    Word.Application.Visible = True
+    On Error Resume Next
+    'wDoc.Close savechanges:=False
+    Set wDoc = Nothing
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+
+End Sub
