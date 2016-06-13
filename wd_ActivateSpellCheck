@@ -1,0 +1,89 @@
+Option Explicit
+
+Sub Macro1()
+ Dim i As Integer
+' Macro1 Macro
+'
+    ActiveDocument.Styles("Normal").LanguageID = wdEnglishCanadian
+    ActiveDocument.Styles("Normal").NoProofing = False
+    
+    Selection.WholeStory
+    Selection.LanguageID = wdEnglishCanadian
+    Selection.NoProofing = False
+    Application.CheckLanguage = True
+    Selection.HomeKey unit:=wdStory
+
+End Sub
+
+
+
+Sub ActivateSpellCheckMultipleFiles()
+
+Dim wDoc As Document
+Dim Loc As String
+Dim LocParent As String
+Dim FldrPicker As FileDialog
+Dim LocGAfiles As String
+Dim myExtension As String
+Dim GAfile As String
+
+'Retrieve Target Folder Path From User
+Set FldrPicker = Application.FileDialog(msoFileDialogFolderPicker)
+With FldrPicker
+    .Title = "Select folder where files are located"
+    .AllowMultiSelect = False
+    If .Show <> -1 Then GoTo NextCode
+    LocGAfiles = .SelectedItems(1) & "\"
+End With
+Set FldrPicker = Nothing
+
+'In Case of Cancel
+NextCode:
+    LocGAfiles = LocGAfiles
+    If LocGAfiles = "" Then GoTo EarlyExit:
+
+'Target File Extension (must include wildcard "*")
+myExtension = "*.docx"
+
+'Target Path with Ending Extention
+GAfile = Dir(LocGAfiles & myExtension)
+
+'Loop through each Excel file in folder
+Do While GAfile <> ""
+    'Set variable equal to GA document
+    Set wDoc = Documents.Open(FileName:=LocGAfiles & GAfile, AddToRecentFiles:=False, Visible:=False)
+    
+    wDoc.Activate
+    
+   
+    ActiveDocument.Styles("Normal").LanguageID = wdEnglishCanadian
+    ActiveDocument.Styles("Normal").NoProofing = False
+    
+    Selection.WholeStory
+    Selection.LanguageID = wdEnglishCanadian
+    Selection.NoProofing = False
+    Application.CheckLanguage = True
+    Selection.HomeKey unit:=wdStory
+
+    
+    'Save and close
+    wDoc.Save
+    wDoc.Close
+    Set wDoc = Nothing
+    
+    'Get next file name
+    GAfile = Dir()
+    
+Loop
+
+MsgBox "all done, thanks"
+
+EarlyExit:
+Word.Application.Visible = True
+On Error Resume Next
+'wDoc.Close savechanges:=False
+Set wDoc = Nothing
+Application.ScreenUpdating = True
+On Error GoTo 0
+
+End Sub
