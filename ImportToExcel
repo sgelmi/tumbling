@@ -1,4 +1,5 @@
 Sub ImportToExcelGITHUB()
+'Enabel reference to word library.
 
 'this macro runs on windows, not sure it would run in OSx
 ' to be imported under Module1
