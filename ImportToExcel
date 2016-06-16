@@ -1,4 +1,4 @@
-Sub ImportToExcel()
+Sub ImportToExcelGITHUB()
 
 'this macro runs on windows, not sure it would run in OSx
 ' to be imported under Module1
@@ -51,14 +51,19 @@ Set FldrPicker = Application.FileDialog(msoFileDialogFolderPicker)
 With FldrPicker
     .Title = "Select folder where completed ga files are located"
     .AllowMultiSelect = False
-     If .Show <> -1 Then GoTo NextCode
+     If .Show <> -1 Then
+        MsgBox "No foder selected. Ending macro"
+        GoTo NextCode
+    End If
+
      myPath = .SelectedItems(1) & "\"
 End With
+
 
 'In Case of Cancel
 NextCode:
   myPath = myPath
-  If myPath = "" Then GoTo ResetSettings
+  If myPath = "" Then GoTo ResetSettings:
 
 'Target File Extension (must include wildcard "*")
 myExtension = "*.docx"
@@ -96,6 +101,8 @@ skippingrecord:
   Loop
 
 
+'Message Box when tasks are completed
+MsgBox "Task Complete! Thanks for your patience"
 
 ResetSettings:
   'Reset Macro Optimization Settings
@@ -105,8 +112,7 @@ ResetSettings:
     Set wdDoc = Nothing
     Set wdApp = Nothing
     
-'Message Box when tasks are completed
-MsgBox "Task Complete! Thanks for your patience"
+
  
 Exit Sub
 NoRecordFoundErr:
@@ -118,4 +124,3 @@ NoRecordFoundErr:
     Resume skippingrecord:
     
 End Sub
-
